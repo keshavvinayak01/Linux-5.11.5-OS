@@ -4962,10 +4962,27 @@ static inline bool prepare_alloc_pages(gfp_t gfp_mask, unsigned int order,
 /*
  * This is the 'heart' of the zoned buddy allocator.
  */
+
+extern struct sigballoon_sub *sigb_head;
+
 struct page *
 __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int preferred_nid,
 							nodemask_t *nodemask)
 {
+	if (sigb_head && ((global_zone_page_state(NR_FREE_PAGES) * (1 <<(PAGE_SHIFT - 10))) < (1 << 20))) {
+		// send SIGBALLOON to all the processes in sigballoon_sub list
+		struct kernel_siginfo info;
+		struct sigballoon_sub *curr = sigb_head;
+		memset(&info, 0, sizeof(struct kernel_siginfo));
+		info.si_signo = SIGBALLOON;
+		info.si_code = SI_QUEUE;
+		while(curr) {
+			send_sig_info(SIGBALLOON, &info, curr->task);
+			curr = curr->next;
+		}
+		curr = NULL;
+	}
+	
 	struct page *page;
 	unsigned int alloc_flags = ALLOC_WMARK_LOW;
 	gfp_t alloc_mask; /* The gfp_t that was actually used for allocation */

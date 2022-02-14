@@ -343,6 +343,10 @@
 332	common	statx			sys_statx
 333	common	io_pgetevents		sys_io_pgetevents
 334	common	rseq			sys_rseq
+335	64	mlockall_pid		sys_mlockall_pid
+336	64	munlockall_pid		sys_munlockall_pid	
+337 64	mlockfull			sys_mlockfull
+338 64	munlockfull			sys_munlockfull
 # don't use numbers 387 through 423, add new calls after the last
 # 'common' entry
 424	common	pidfd_send_signal	sys_pidfd_send_signal

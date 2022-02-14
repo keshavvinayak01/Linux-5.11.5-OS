@@ -60,6 +60,7 @@ typedef unsigned long sigset_t;
 
 /* These should not be considered constants from userland.  */
 #define SIGRTMIN	32
+#define SIGBALLOON	38
 #define SIGRTMAX	_NSIG
 
 #define SA_RESTORER	0x04000000
