@@ -903,12 +903,16 @@ asmlinkage long sys_mprotect(unsigned long start, size_t len,
 asmlinkage long sys_msync(unsigned long start, size_t len, int flags);
 asmlinkage long sys_mlock(unsigned long start, size_t len);
 asmlinkage long sys_munlock(unsigned long start, size_t len);
+
+// ************************* OS Assignment *************************
 asmlinkage long sys_munlockall(void);
 asmlinkage long sys_mlockall(int flags);
 asmlinkage long sys_munlockall_pid(pid_t pid);
 asmlinkage long sys_mlockall_pid(pid_t pid, int flags);
 asmlinkage long sys_mlockfull(int flags);
 asmlinkage long sys_munlockfull(void);
+// ************************* OS Assignment *************************
+
 asmlinkage long sys_mincore(unsigned long start, size_t len,
 				unsigned char __user * vec);
 asmlinkage long sys_madvise(unsigned long start, size_t len, int behavior);
