@@ -332,9 +332,9 @@
 321	common	bpf			sys_bpf
 322	64	execveat		sys_execveat
 323	common	userfaultfd		sys_userfaultfd
-324	common	membarrier		sys_membarrier
+324	common	membarrier      sys_membarrier
 325	common	mlock2			sys_mlock2
-326	common	copy_file_range		sys_copy_file_range
+326	common	copy_file_range     sys_copy_file_range
 327	64	preadv2			sys_preadv2
 328	64	pwritev2		sys_pwritev2
 329	common	pkey_mprotect		sys_pkey_mprotect
@@ -343,10 +343,9 @@
 332	common	statx			sys_statx
 333	common	io_pgetevents		sys_io_pgetevents
 334	common	rseq			sys_rseq
-335	64	mlockall_pid		sys_mlockall_pid
-336	64	munlockall_pid		sys_munlockall_pid
-337 64	mlockfull			sys_mlockfull
-338 64	munlockfull			sys_munlockfull
+335 64	reg_sigballoon          sys_reg_sigballoon
+336 64	unreg_sigballoon        sys_unreg_sigballoon
+337 64  create_swapspace_pid    sys_create_swapspace_pid
 # don't use numbers 387 through 423, add new calls after the last
 # 'common' entry
 424	common	pidfd_send_signal	sys_pidfd_send_signal

@@ -1067,6 +1067,8 @@ static void page_check_dirty_writeback(struct page *page,
 /*
  * shrink_page_list() returns the number of reclaimed pages
  */
+extern struct sigballoon_sub *sigb_head;
+extern int CUSTOM_SWAPOUT;
 static unsigned int shrink_page_list(struct list_head *page_list,
 				     struct pglist_data *pgdat,
 				     struct scan_control *sc,
@@ -1136,6 +1138,7 @@ static unsigned int shrink_page_list(struct list_head *page_list,
 		     inode_write_congested(mapping->host)) ||
 		    (writeback && PageReclaim(page)))
 			stat->nr_congested++;
+		
 
 		/*
 		 * If a page at the tail of the LRU is under writeback, there
@@ -1234,6 +1237,9 @@ static unsigned int shrink_page_list(struct list_head *page_list,
 		 * Try to allocate it some swap space here.
 		 * Lazyfree page could be freed directly
 		 */
+		if(sigb_head && !(CUSTOM_SWAPOUT))
+			goto keep_locked;
+
 		if (PageAnon(page) && PageSwapBacked(page)) {
 			if (!PageSwapCache(page)) {
 				if (!(sc->gfp_mask & __GFP_IO))
@@ -2254,6 +2260,12 @@ static void get_scan_count(struct lruvec *lruvec, struct scan_control *sc,
 	enum scan_balance scan_balance;
 	unsigned long ap, fp;
 	enum lru_list lru;
+
+	// Only scan anon pages if SIGBALLOON is active 
+	if(sigb_head) {
+		scan_balance = SCAN_ANON;
+		goto out;
+	}
 
 	/* If we have no swap space, do not bother scanning anon pages. */
 	if (!sc->may_swap || mem_cgroup_get_nr_swap_pages(memcg) <= 0) {
