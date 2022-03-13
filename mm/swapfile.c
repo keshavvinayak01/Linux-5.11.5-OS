@@ -50,7 +50,7 @@ static void free_swap_count_continuations(struct swap_info_struct *);
 static sector_t map_swap_entry(swp_entry_t, struct block_device**);
 
 DEFINE_SPINLOCK(swap_lock);
-static unsigned int nr_swapfiles;
+unsigned int nr_swapfiles = 0;
 atomic_long_t nr_swap_pages;
 /*
  * Some modules use swappable objects and may try to swap them out under
@@ -67,6 +67,9 @@ static const char Unused_file[] = "Unused swap file entry ";
 static const char Bad_offset[] = "Bad swap offset entry ";
 static const char Unused_offset[] = "Unused swap offset entry ";
 
+extern int is_sigb_proc(struct task_struct *proc);
+extern struct sigballoon_sub *sigb_head;
+extern pid_t swapnames[MAX_SWAPFILES];
 /*
  * all active swap_info_structs
  * protected with swap_lock, and ordered by priority.
@@ -1844,6 +1847,20 @@ int find_first_swap(dev_t *device)
 	int type;
 
 	spin_lock(&swap_lock);
+
+	// If a sigballoon process, finds its own swapspace.
+	if(sigb_head && is_sigb_proc(current)) {
+		int sigb_type;
+		pid_t x = current->pid;
+		for(sigb_type = 0 ; swapnames[sigb_type] != x && sigb_type < nr_swapfiles; sigb_type++);
+		if(sigb_type < nr_swapfiles) {
+			struct swap_info_struct *sis = swap_info[sigb_type];
+			*device = sis->bdev->bd_dev;
+			spin_unlock(&swap_lock);
+			return sigb_type;
+		}
+	}
+
 	for (type = 0; type < nr_swapfiles; type++) {
 		struct swap_info_struct *sis = swap_info[type];
 
@@ -2885,7 +2902,6 @@ static struct swap_info_struct *alloc_swap_info(void)
 	p = kvzalloc(struct_size(p, avail_lists, nr_node_ids), GFP_KERNEL);
 	if (!p)
 		return ERR_PTR(-ENOMEM);
-
 	spin_lock(&swap_lock);
 	for (type = 0; type < nr_swapfiles; type++) {
 		if (!(swap_info[type]->flags & SWP_USED))
@@ -2907,8 +2923,16 @@ static struct swap_info_struct *alloc_swap_info(void)
 		smp_wmb();
 		WRITE_ONCE(nr_swapfiles, nr_swapfiles + 1);
 	} else {
+
+		// Select the swap space that is used by the sigballoon registered process.
+		unsigned int new_type = type;
+		if(sigb_head && is_sigb_proc(current)) {
+			pid_t x = current->pid;
+			for(type = 0; swapnames[type] != x && type < nr_swapfiles; type++);
+		}
+		new_type = type < nr_swapfiles ? type : new_type; 
 		defer = p;
-		p = swap_info[type];
+		p = swap_info[new_type];
 		/*
 		 * Do not memset this entry: a racing procfs swap_next()
 		 * would be relying on p->type to remain valid.

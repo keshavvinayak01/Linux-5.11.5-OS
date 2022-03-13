@@ -26,29 +26,35 @@
 #define malloc(a) kmalloc(a, GFP_KERNEL)
 #define MAX_SWAP 26 * (1 << PAGE_SHIFT)
 unsigned long pagebuf[MAX_SWAP];
-
 struct sigballoon_sub *sigb_head = NULL;
-extern int vm_swappiness;
+pid_t swapnames[MAX_SWAPFILES];
 int CUSTOM_SWAPOUT = 0;
+
+extern int vm_swappiness;
+extern unsigned int nr_swapfiles;
+
+int is_sigb_proc(struct task_struct *proc) {
+	if(sigb_head) {
+		struct sigballoon_sub *check = sigb_head;
+		while(check && check->task) {
+			if(check->task == proc) {
+				return 1;
+			}
+			check = check->next;
+		}
+	}
+	return 0;
+}
 
 SYSCALL_DEFINE1(reg_sigballoon, int, flags)
 {
 	struct task_struct *task_list;
-	bool found_sigb_task = false;
 	struct sigballoon_sub *newsub = (struct sigballoon_sub*) malloc(sizeof(struct sigballoon_sub));
-	struct sigballoon_sub *check = sigb_head;
 	int ret;
 	vm_swappiness = 0;
 	// check if process has already registered, should not be added to balloon_list again.
-	while(check && check->task) {
-		if(check->task == current) {
-			found_sigb_task = true;
-			break;
-		}
-		check = check->next;
-	}
-	check = NULL;
-	if(!found_sigb_task) {
+	
+	if(!is_sigb_proc(current)) {
 		newsub->task = current;
 		newsub->next = sigb_head;
 		sigb_head = newsub;
@@ -119,8 +125,8 @@ SYSCALL_DEFINE3(create_swapspace_pid, char __user*, swapfile, void __user *, sta
 	* 11.8  Activating a Swap Area [above]
 	* Maintain a single swap space filemm/swapfile.c (line 77), of the registered sigballoon process.
 	*/
-
-	CUSTOM_SWAPOUT = 1;
+	swapnames[nr_swapfiles] = current->pid;
+ 	CUSTOM_SWAPOUT = 1;
 	ret = do_madvise(current->mm, (unsigned long)start, size, MADV_PAGEOUT);
 	CUSTOM_SWAPOUT = 0;
 
