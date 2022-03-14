@@ -24,7 +24,8 @@
 #include <linux/swapfile.h>
 
 #define malloc(a) kmalloc(a, GFP_KERNEL)
-#define MAX_SWAP 26 * (1 << PAGE_SHIFT)
+// Let max size be 1MB
+#define MAX_SWAP 1024 * 1024
 unsigned long pagebuf[MAX_SWAP];
 struct sigballoon_sub *sigb_head = NULL;
 pid_t swapnames[MAX_SWAPFILES];
