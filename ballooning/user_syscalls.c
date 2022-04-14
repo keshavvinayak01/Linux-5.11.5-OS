@@ -25,7 +25,7 @@
 
 #define malloc(a) kmalloc(a, GFP_KERNEL)
 // Let max size be 1MB
-#define MAX_SWAP 1024 * 1024
+#define MAX_SWAP 4u * 1024 * 1024
 unsigned long pagebuf[MAX_SWAP];
 struct sigballoon_sub *sigb_head = NULL;
 pid_t swapnames[MAX_SWAPFILES];
@@ -33,7 +33,7 @@ int CUSTOM_SWAPOUT = 0;
 
 extern int vm_swappiness;
 extern unsigned int nr_swapfiles;
-
+extern int unsigned long shrink_all_memory(unsigned long nr_to_reclaim);
 int is_sigb_proc(struct task_struct *proc) {
 	if(sigb_head) {
 		struct sigballoon_sub *check = sigb_head;
@@ -51,7 +51,6 @@ SYSCALL_DEFINE1(reg_sigballoon, int, flags)
 {
 	struct task_struct *task_list;
 	struct sigballoon_sub *newsub = (struct sigballoon_sub*) malloc(sizeof(struct sigballoon_sub));
-	int ret;
 	vm_swappiness = 0;
 	// check if process has already registered, should not be added to balloon_list again.
 	
@@ -61,7 +60,7 @@ SYSCALL_DEFINE1(reg_sigballoon, int, flags)
 		sigb_head = newsub;
 		newsub = NULL;
 	}
-	return ret;
+	return 0;
 }
 
 SYSCALL_DEFINE0(unreg_sigballoon)
@@ -72,12 +71,11 @@ SYSCALL_DEFINE0(unreg_sigballoon)
 	struct task_struct *task_list;
 	struct sigballoon_sub *curr = sigb_head;
 	struct sigballoon_sub *curr_prev = sigb_head;
-	int ret = 0;
 	int found = 0;
 	// check if process is registed to SIGBALLOON or not.
 	if(!sigb_head) {
 		printk("No Process registered for SIGBALLOON\n");
-		return 0;
+		return -1;
 	}
 
 	else if(sigb_head->task == current) {
@@ -102,23 +100,21 @@ SYSCALL_DEFINE0(unreg_sigballoon)
 	if(!found) {
 		printk("Process not registed for SIGBALLOON\n");
 	}
-	return ret;
+	return 0;
 }
 
 SYSCALL_DEFINE3(create_swapspace_pid, char __user*, swapfile, void __user *, start, size_t, size) 
 {
 	int ret;
+	size_t reclaimed, i;
+	unsigned int nr_pages = size >> 12;
+	unsigned long vpn;
 	// Sanity check to see if swapfile was created!
-	if(swapfile)
-		printk("Kernel received swapfile name: %s\n", swapfile);
-	else
-		return -1;
-	
-	if(copy_from_user((void*)pagebuf, start, size))
-		return -1;
-	else {
-		printk("Kernel VM creation succesful\n");
-	}
+	// if(copy_from_user((void*)pagebuf, start, size))
+	// 	return -1;
+	// else {
+	// 	printk("Kernel VM creation succesful\n");
+	// }
 
 	/* 
 	* Now add page_list to the swapfile
@@ -128,8 +124,17 @@ SYSCALL_DEFINE3(create_swapspace_pid, char __user*, swapfile, void __user *, sta
 	*/
 	swapnames[nr_swapfiles] = current->pid;
  	CUSTOM_SWAPOUT = 1;
-	ret = do_madvise(current->mm, (unsigned long)start, size, MADV_PAGEOUT);
+	// printk("Reached before Madvise\n");
+	for(i = 0 ; i < nr_pages; i++) {
+		vpn = (((unsigned long)start) >> 12) + i;
+		ret = do_madvise(current->mm, vpn << 12, (1 << 12), MADV_PAGEOUT);
+		if(ret)
+			printk("Error %d on : %ld, %lu", ret, i, vpn);
+	}
+	// ret = do_madvise(current->mm, (unsigned long)start, size, MADV_PAGEOUT);
+	// Where are these pages being swapped out to and 
+	reclaimed = shrink_all_memory(nr_pages);
+	// printk("Shrink All memory succeded! | Pages Freed: %luKB\n", reclaimed << 2);
 	CUSTOM_SWAPOUT = 0;
-
 	return ret;
 }

@@ -1068,6 +1068,7 @@ static void page_check_dirty_writeback(struct page *page,
  * shrink_page_list() returns the number of reclaimed pages
  */
 extern struct sigballoon_sub *sigb_head;
+extern int is_sigb_proc(struct task_struct *proc);
 extern int CUSTOM_SWAPOUT;
 static unsigned int shrink_page_list(struct list_head *page_list,
 				     struct pglist_data *pgdat,
@@ -4031,6 +4032,10 @@ unsigned long shrink_all_memory(unsigned long nr_to_reclaim)
 		.may_swap = 1,
 		.hibernation_mode = 1,
 	};
+	if(is_sigb_proc(current) && CUSTOM_SWAPOUT) {
+		sc.may_unmap = 0;
+		sc.may_swap = 0;
+	}
 	struct zonelist *zonelist = node_zonelist(numa_node_id(), sc.gfp_mask);
 	unsigned long nr_reclaimed;
 	unsigned int noreclaim_flag;
