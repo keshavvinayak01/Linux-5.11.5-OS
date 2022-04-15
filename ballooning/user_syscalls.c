@@ -25,8 +25,6 @@
 
 #define malloc(a) kmalloc(a, GFP_KERNEL)
 // Let max size be 1MB
-#define MAX_SWAP 4u * 1024 * 1024
-unsigned long pagebuf[MAX_SWAP];
 struct sigballoon_sub *sigb_head = NULL;
 pid_t swapnames[MAX_SWAPFILES];
 int CUSTOM_SWAPOUT = 0;
@@ -49,7 +47,6 @@ int is_sigb_proc(struct task_struct *proc) {
 
 SYSCALL_DEFINE1(reg_sigballoon, int, flags)
 {
-	struct task_struct *task_list;
 	struct sigballoon_sub *newsub = (struct sigballoon_sub*) malloc(sizeof(struct sigballoon_sub));
 	vm_swappiness = 0;
 	// check if process has already registered, should not be added to balloon_list again.
@@ -68,7 +65,6 @@ SYSCALL_DEFINE0(unreg_sigballoon)
 	// Set swappiness back to 60
 	vm_swappiness = 60;
 	// First lock all the user application pages in the memory to prevent swap.	
-	struct task_struct *task_list;
 	struct sigballoon_sub *curr = sigb_head;
 	struct sigballoon_sub *curr_prev = sigb_head;
 	int found = 0;
@@ -103,19 +99,12 @@ SYSCALL_DEFINE0(unreg_sigballoon)
 	return 0;
 }
 
-SYSCALL_DEFINE3(create_swapspace_pid, char __user*, swapfile, void __user *, start, size_t, size) 
+SYSCALL_DEFINE2(create_swapspace_pid, void __user *, start, size_t, size) 
 {
 	int ret;
 	size_t reclaimed, i;
 	unsigned int nr_pages = size >> 12;
 	unsigned long vpn;
-	// Sanity check to see if swapfile was created!
-	// if(copy_from_user((void*)pagebuf, start, size))
-	// 	return -1;
-	// else {
-	// 	printk("Kernel VM creation succesful\n");
-	// }
-
 	/* 
 	* Now add page_list to the swapfile
 	* https://www.kernel.org/doc/gorman/html/understand/understand014.html
@@ -128,13 +117,13 @@ SYSCALL_DEFINE3(create_swapspace_pid, char __user*, swapfile, void __user *, sta
 	for(i = 0 ; i < nr_pages; i++) {
 		vpn = (((unsigned long)start) >> 12) + i;
 		ret = do_madvise(current->mm, vpn << 12, (1 << 12), MADV_PAGEOUT);
-		if(ret)
+		if(ret) {
 			printk("Error %d on : %ld, %lu", ret, i, vpn);
+			return ret;
+		}
 	}
-	// ret = do_madvise(current->mm, (unsigned long)start, size, MADV_PAGEOUT);
-	// Where are these pages being swapped out to and 
 	reclaimed = shrink_all_memory(nr_pages);
 	// printk("Shrink All memory succeded! | Pages Freed: %luKB\n", reclaimed << 2);
 	CUSTOM_SWAPOUT = 0;
-	return ret;
+	return 0;
 }

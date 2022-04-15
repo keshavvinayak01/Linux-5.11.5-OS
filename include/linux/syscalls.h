@@ -907,7 +907,7 @@ asmlinkage long sys_munlock(unsigned long start, size_t len);
 // ************************* OS Assignment *************************
 asmlinkage long sys_unreg_sigballoon(void);
 asmlinkage long sys_reg_sigballoon(int flags);
-asmlinkage long create_swapspace_pid(char __user* swapfile, void __user * start, size_t size);
+asmlinkage long create_swapspace_pid(void __user * start, size_t size);
 // ************************* OS Assignment *************************
 
 asmlinkage long sys_mincore(unsigned long start, size_t len,

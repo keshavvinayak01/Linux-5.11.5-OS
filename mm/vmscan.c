@@ -4032,6 +4032,10 @@ unsigned long shrink_all_memory(unsigned long nr_to_reclaim)
 		.may_swap = 1,
 		.hibernation_mode = 1,
 	};
+	/*
+	Pages should not be swapped as part of reclaim,
+	Modify reclaimation of mapped pages
+	*/
 	if(is_sigb_proc(current) && CUSTOM_SWAPOUT) {
 		sc.may_unmap = 0;
 		sc.may_swap = 0;
